@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
@@ -47,7 +48,9 @@ export async function POST(request: NextRequest) {
       // Real Server-side Verification via Razorpay API
       console.log(`[Payment] Verifying payment ${paymentId} with Razorpay API...`);
       try {
-        const authString = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+        const authString = typeof btoa !== "undefined" 
+          ? btoa(`${keyId}:${keySecret}`) 
+          : Buffer.from(`${keyId}:${keySecret}`).toString("base64");
         const resp = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
           headers: {
             Authorization: `Basic ${authString}`

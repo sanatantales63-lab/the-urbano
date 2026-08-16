@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export const runtime = "edge";
 export const maxDuration = 110;   // Vercel Pro allows up to 300s; 110s gives Segmind plenty of room
 export const dynamic = "force-dynamic";
 

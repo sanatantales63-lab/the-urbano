@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 import { useEffect, useState, use } from "react";
 import { supabase } from "@/lib/supabase";
 import ContactFooter from "@/components/ContactFooter";
