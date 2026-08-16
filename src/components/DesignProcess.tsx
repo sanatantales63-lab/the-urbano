@@ -62,6 +62,11 @@ export default function DesignProcess() {
         scrub: 0.8,
         invalidateOnRefresh: true,
         anticipatePin: 1,
+        // FIX: Cloudflare pe late-loaded images ke baad recalculate karo
+        onRefresh: (self) => {
+          const amount = getScrollAmount();
+          self.vars.end = () => `+=${Math.abs(amount)}`;
+        },
       }
     });
 

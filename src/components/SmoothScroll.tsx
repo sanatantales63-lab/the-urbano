@@ -30,9 +30,34 @@ export default function SmoothScroll() {
     gsap.ticker.add(tickerFn);
     gsap.ticker.lagSmoothing(0);
 
+    // --- FIX: Cloudflare pe images/fonts load hone ke baad ScrollTrigger refresh karo ---
+    // Ye ensure karta hai ki pinned sections sahi height calculate karein
+    const handleLoad = () => {
+      ScrollTrigger.refresh(true);
+    };
+
+    if (document.readyState === "complete") {
+      // Page already loaded (e.g. cached by Cloudflare)
+      ScrollTrigger.refresh(true);
+    } else {
+      window.addEventListener("load", handleLoad);
+    }
+
+    // Extra safety: fonts/images ke baad bhi ek baar refresh
+    const refreshTimer = setTimeout(() => {
+      ScrollTrigger.refresh(true);
+    }, 500);
+
+    const refreshTimer2 = setTimeout(() => {
+      ScrollTrigger.refresh(true);
+    }, 1500);
+
     return () => {
       gsap.ticker.remove(tickerFn);
       lenis.destroy();
+      window.removeEventListener("load", handleLoad);
+      clearTimeout(refreshTimer);
+      clearTimeout(refreshTimer2);
     };
   }, [isAdmin]);
 
