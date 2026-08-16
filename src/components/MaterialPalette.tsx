@@ -50,6 +50,7 @@ export default function MaterialPalette() {
       transition={{ duration: 0.7, ease: "easeInOut" }}
       className="py-16 md:py-24 relative overflow-hidden" 
       id="materials"
+      style={{ zIndex: 2, isolation: "isolate" }}
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 relative z-10">
         

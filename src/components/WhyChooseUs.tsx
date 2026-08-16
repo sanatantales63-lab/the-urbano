@@ -42,7 +42,7 @@ const trustFactors = [
 
 export default function WhyChooseUs() {
   return (
-    <section className="py-20 bg-[#fafafa] relative border-y border-gray-100 overflow-hidden">
+    <section className="py-20 bg-[#fafafa] relative border-y border-gray-100 overflow-hidden" style={{ zIndex: 2, isolation: "isolate" }}>
       
       {/* Static Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-gradient-to-r from-[#8cc63f]/10 to-[#ffc905]/5 blur-3xl rounded-full pointer-events-none"></div>
