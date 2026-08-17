@@ -41,10 +41,17 @@ export const DEFAULT_CATEGORIES: CategoryItem[] = [
     is_featured: true,
   },
   {
-    slug: "gym-unisex-salon",
-    title: "Gym & Unisex Salon",
-    description: "State-of-the-art private home fitness studios and luxury unisex salon suites featuring illuminated vanity arches.",
+    slug: "gym",
+    title: "Gym",
+    description: "State-of-the-art private home fitness studios and wellness spaces featuring acoustic wood slats and ambient lighting.",
     cover_image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop",
+    is_featured: true,
+  },
+  {
+    slug: "unisex-salon",
+    title: "Unisex Salon",
+    description: "Luxury unisex salon suites and grooming lounges featuring illuminated vanity arches and bespoke stations.",
+    cover_image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop",
     is_featured: true,
   },
 ];
@@ -123,24 +130,40 @@ export const DEFAULT_CATEGORY_PHOTOS: Record<string, CategoryPhoto[]> = {
       image_url: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
     },
   ],
+  gym: [
+    {
+      category_slug: "gym",
+      title: "Private Luxury Fitness Studio",
+      description: "Acoustic wood slatting, mirror walls, and ambient LED lights.",
+      image_url: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop",
+    },
+    {
+      category_slug: "gym",
+      title: "High-Performance Athletic Studio",
+      description: "Custom rubberized flooring, integrated cardio stations, and cove lighting.",
+      image_url: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?q=80&w=1200&auto=format&fit=crop",
+    },
+  ],
+  "unisex-salon": [
+    {
+      category_slug: "unisex-salon",
+      title: "High-End Unisex Styling Salon",
+      description: "Custom vanity stations with illuminated arch mirrors.",
+      image_url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop",
+    },
+    {
+      category_slug: "unisex-salon",
+      title: "Bespoke Grooming & Wellness Lounge",
+      description: "Marble wash stations and fluted glass partitions.",
+      image_url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop",
+    },
+  ],
   "gym-unisex-salon": [
     {
       category_slug: "gym-unisex-salon",
       title: "Private Luxury Fitness Studio",
       description: "Acoustic wood slatting, mirror walls, and ambient LED lights.",
       image_url: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop",
-    },
-    {
-      category_slug: "gym-unisex-salon",
-      title: "High-End Unisex Styling Salon",
-      description: "Custom vanity stations with illuminated arch mirrors.",
-      image_url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop",
-    },
-    {
-      category_slug: "gym-unisex-salon",
-      title: "Bespoke Grooming & Wellness Lounge",
-      description: "Marble wash stations and fluted glass partitions.",
-      image_url: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop",
     },
   ],
 };
@@ -165,15 +188,14 @@ export async function getCategories(): Promise<CategoryItem[]> {
 }
 
 /**
- * Fetch featured 4 categories for homepage
+ * Fetch featured categories for homepage
  */
 export async function getFeaturedCategories(): Promise<CategoryItem[]> {
   try {
     const { data, error } = await supabase
       .from("categories")
       .select("*")
-      .eq("is_featured", true)
-      .limit(4);
+      .eq("is_featured", true);
 
     if (!error && data && data.length > 0) {
       return data;
@@ -182,5 +204,5 @@ export async function getFeaturedCategories(): Promise<CategoryItem[]> {
     console.warn("[Categories] Supabase featured fetch error:", err);
   }
   const all = await getCategories();
-  return all.slice(0, 4);
+  return all.slice(0, 6);
 }

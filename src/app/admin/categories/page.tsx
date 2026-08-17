@@ -133,8 +133,8 @@ export default function AdminCategoriesPage() {
   const toggleFeatured = async (cat: CategoryItem) => {
     const featuredCount = categories.filter((c) => c.is_featured && c.slug !== cat.slug).length;
 
-    if (!cat.is_featured && featuredCount >= 4) {
-      alert("Maximum 4 categories can be featured on the homepage. Uncheck another category first.");
+    if (!cat.is_featured && featuredCount >= 6) {
+      alert("Maximum 6 categories can be featured on the homepage. Uncheck another category first.");
       return;
     }
 
@@ -291,7 +291,7 @@ export default function AdminCategoriesPage() {
               All Categories ({categories.length})
             </span>
             <span className="px-3 py-1 bg-[#8cc63f]/10 border border-[#8cc63f]/30 text-[#8cc63f] text-[9px] rounded-full font-bold">
-              {categories.filter((c) => c.is_featured).length} / 4 Featured on Homepage
+              {categories.filter((c) => c.is_featured).length} Featured on Homepage
             </span>
           </div>
           <span className="text-[10px] text-gray-500">

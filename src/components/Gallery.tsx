@@ -17,7 +17,8 @@ const categories = [
   { id: "residential", label: "Residential" },
   { id: "pantry", label: "Pantry Section" },
   { id: "kitchen", label: "Modular Kitchen" },
-  { id: "gym_salon", label: "Gym & Unisex Salon" }
+  { id: "gym", label: "Gym" },
+  { id: "salon", label: "Unisex Salon" }
 ];
 
 const galleryImages: GalleryImage[] = [
@@ -135,30 +136,41 @@ const galleryImages: GalleryImage[] = [
     aspect: "aspect-[4/3]"
   },
 
-  // 4. Gym & Unisex Salon
+  // 4. Gym
   {
     id: 13,
     title: "Private Luxury Fitness Studio",
-    category: "gym_salon",
-    categoryLabel: "Gym & Unisex Salon",
+    category: "gym",
+    categoryLabel: "Gym",
     desc: "State-of-the-art fitness space with acoustic wood slatting, mirror walls, and ambient LED lights.",
     img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80&auto=format&fit=crop",
     aspect: "aspect-[4/5]"
   },
   {
     id: 14,
+    title: "High-Performance Athletic Studio",
+    category: "gym",
+    categoryLabel: "Gym",
+    desc: "Custom rubberized flooring, integrated cardio stations, and sleek ambient cove lighting.",
+    img: "https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&q=80&auto=format&fit=crop",
+    aspect: "aspect-[4/3]"
+  },
+
+  // 5. Unisex Salon
+  {
+    id: 15,
     title: "High-End Unisex Styling Salon",
-    category: "gym_salon",
-    categoryLabel: "Gym & Unisex Salon",
+    category: "salon",
+    categoryLabel: "Unisex Salon",
     desc: "Custom vanity stations with illuminated arch mirrors, gold metallic accents, and plush hydraulic chairs.",
     img: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&q=80&auto=format&fit=crop",
     aspect: "aspect-[3/4]"
   },
   {
-    id: 15,
+    id: 16,
     title: "Bespoke Grooming & Wellness Lounge",
-    category: "gym_salon",
-    categoryLabel: "Gym & Unisex Salon",
+    category: "salon",
+    categoryLabel: "Unisex Salon",
     desc: "Sophisticated unisex salon lounge featuring marble wash stations, fluted glass partitions, and mood lighting.",
     img: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&q=80&auto=format&fit=crop",
     aspect: "aspect-[16/10]"
@@ -182,15 +194,28 @@ export default function Gallery() {
           .order("created_at", { ascending: false });
 
         if (!error && data && data.length > 0) {
-          const mapped = data.map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            category: item.category,
-            categoryLabel: item.category_label || item.category,
-            desc: item.description || "",
-            img: item.image_url,
-            aspect: item.aspect || "aspect-[4/3]"
-          }));
+          const mapped = data.map((item: any) => {
+            let cat = item.category;
+            let catLabel = item.category_label || item.category;
+
+            // Backwards compatibility for legacy gym_salon category
+            if (cat === "gym_salon") {
+              const fullText = `${item.title || ""} ${item.description || ""}`.toLowerCase();
+              const isSalon = fullText.includes("salon") || fullText.includes("grooming") || fullText.includes("hair") || fullText.includes("styling");
+              cat = isSalon ? "salon" : "gym";
+              catLabel = isSalon ? "Unisex Salon" : "Gym";
+            }
+
+            return {
+              id: item.id,
+              title: item.title,
+              category: cat,
+              categoryLabel: catLabel,
+              desc: item.description || "",
+              img: item.image_url,
+              aspect: item.aspect || "aspect-[4/3]"
+            };
+          });
           setImagesList(mapped);
         }
       } catch (err) {

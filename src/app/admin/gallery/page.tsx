@@ -37,7 +37,8 @@ export default function AdminGalleryPage() {
     { id: "residential", label: "Residential" },
     { id: "pantry", label: "Pantry Section" },
     { id: "kitchen", label: "Modular Kitchen" },
-    { id: "gym_salon", label: "Gym & Unisex Salon" },
+    { id: "gym", label: "Gym" },
+    { id: "salon", label: "Unisex Salon" },
   ];
 
   const aspectRatios = [
@@ -168,7 +169,13 @@ export default function AdminGalleryPage() {
   const openEditModal = (item: GalleryItem) => {
     setEditingItem(item);
     setTitle(item.title);
-    setCategory(item.category);
+    let selectedCat = item.category;
+    if (selectedCat === "gym_salon") {
+      const fullText = `${item.title || ""} ${item.description || ""}`.toLowerCase();
+      const isSalon = fullText.includes("salon") || fullText.includes("grooming") || fullText.includes("hair") || fullText.includes("styling");
+      selectedCat = isSalon ? "salon" : "gym";
+    }
+    setCategory(selectedCat);
     setDescription(item.description || "");
     setImageUrl(item.image_url);
     setAspect(item.aspect);
