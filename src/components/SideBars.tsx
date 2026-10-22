@@ -24,9 +24,9 @@ export default function SideBars() {
       
       {/* Right Scale Bar - Hamesha dikhne wala halka background */}
       <div className="fixed right-[20px] md:right-[30px] top-0 w-[3px] h-full bg-[#ffc905]/10 z-[40] hidden md:block">
-        {/* Scroll karne par Yellow color se fill hoga (Top to Bottom) */}
+        {/* Scroll karne par Yellow color se alternate fill hoga (Bottom to Top) */}
         <motion.div 
-          style={{ scaleY, transformOrigin: "top" }}
+          style={{ scaleY, transformOrigin: "bottom" }}
           className="w-full h-full bg-[#ffc905] shadow-[0_0_10px_#ffc905]"
         />
       </div>

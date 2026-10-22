@@ -12,6 +12,15 @@ const cinzel = Cinzel({ subsets: ["latin"], weight: ["400", "600", "700"], varia
 export const metadata: Metadata = {
   title: "The Urbano | Premium Interior Design",
   description: "Kolkata's premier luxury interior design atelier.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode; }>) {

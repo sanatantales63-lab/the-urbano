@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Loader from "../components/Loader";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AIVisualizer from "../components/AIVisualizer";
 import SideBars from "../components/SideBars";
 import WhyChooseUs from "../components/WhyChooseUs";
@@ -11,36 +11,193 @@ import DesignProcess from "../components/DesignProcess";
 import Testimonials from "../components/Testimonials";
 import ContactFooter from "../components/ContactFooter";
 import Gallery from "../components/Gallery";
+import AIFloatingBadge from "../components/AIFloatingBadge";
 
 import { getSettings } from "@/lib/settingsData";
+import { isVideoUrl } from "@/lib/cloudinary";
+
+const FALLBACK_SLIDES = [
+  "https://res.cloudinary.com/suabdqxg/video/upload/c_fill,ar_16:9/g_auto/q_auto/v1790838690/iwlxvxru4xojth52ro9r.mp4",
+  "https://res.cloudinary.com/suabdqxg/video/upload/c_fill,ar_16:9/g_auto/q_auto/v1790838692/wunmzuosfqgmsc2kjtex.mp4",
+  "https://res.cloudinary.com/suabdqxg/video/upload/c_fill,ar_16:9/g_auto/q_auto/v1790838693/yttxfnnifl5wjmrg0ja6.mp4",
+  "https://res.cloudinary.com/suabdqxg/video/upload/c_fill,ar_16:9/g_auto/q_auto/v1790838695/hetexrhsmrirqailszhm.mp4",
+];
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
-  const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1464938050520-ef2270bb8ce8?w=1800&q=90&auto=format&fit=crop");
-  const [heroOverlayImage, setHeroOverlayImage] = useState("https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1800&q=90&auto=format&fit=crop");
+  const [curtainDone, setCurtainDone] = useState(false);
 
-  // Fetch dynamic settings from database
-  useEffect(() => {
-    getSettings(
-      ["hero_bg_image", "hero_overlay_image"],
-      {
-        hero_bg_image: "https://images.unsplash.com/photo-1464938050520-ef2270bb8ce8?w=1800&q=90&auto=format&fit=crop",
-        hero_overlay_image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1800&q=90&auto=format&fit=crop",
+  // Slideshow state
+  const [heroSlides, setHeroSlides] = useState<string[]>(FALLBACK_SLIDES);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [prevSlide, setPrevSlide] = useState<number | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  // Keep fresh references for event callbacks without stale closures
+  const heroSlidesRef = useRef<string[]>(heroSlides);
+  heroSlidesRef.current = heroSlides;
+
+  const currentSlideRef = useRef<number>(currentSlide);
+  currentSlideRef.current = currentSlide;
+
+  // Advance to next slide in continuous loop (1 -> 2 -> ... -> N -> 1)
+  const advanceSlide = useCallback(() => {
+    const total = heroSlidesRef.current.length;
+    if (total <= 1) {
+      // Single slide: if it's a video, replay from 0s
+      const vid = videoRefs.current[0];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(() => {});
       }
-    ).then((vals) => {
-      setHeroBgImage(vals.hero_bg_image);
-      setHeroOverlayImage(vals.hero_overlay_image);
+      return;
+    }
+    setCurrentSlide((prev) => {
+      const next = (prev + 1) % total;
+      setPrevSlide(prev);
+      return next;
     });
   }, []);
 
-  // After 2 seconds of hero being visible, trigger the cinematic reveal
+  // Handler when video reaches the end
+  const handleEnded = useCallback((idx: number) => {
+    // If only 1 slide, replay it continuously
+    if (heroSlidesRef.current.length <= 1) {
+      const vid = videoRefs.current[0];
+      if (vid) {
+        vid.currentTime = 0;
+        vid.play().catch(() => {});
+      }
+      return;
+    }
+
+    // Advance only if it's the currently active video that finished
+    if (idx === currentSlideRef.current) {
+      advanceSlide();
+    }
+  }, [advanceSlide]);
+
+  // Fetch hero slides from Supabase
+  useEffect(() => {
+    getSettings(
+      ["hero_slides", "hero_bg_image", "hero_overlay_image"],
+      {
+        hero_slides: "",
+        hero_bg_image: FALLBACK_SLIDES[0],
+        hero_overlay_image: FALLBACK_SLIDES[1],
+      }
+    ).then((vals) => {
+      if (vals.hero_slides) {
+        try {
+          const parsed = JSON.parse(vals.hero_slides) as string[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setHeroSlides(parsed);
+            return;
+          }
+        } catch { /* fallback below */ }
+      }
+      // Backwards compat — use the 2 old single-image settings
+      const slides = [vals.hero_bg_image, vals.hero_overlay_image].filter(Boolean);
+      if (slides.length > 0) setHeroSlides(slides);
+    });
+  }, []);
+
+  // After loader completes, wait 2s then trigger cinematic reveal
   useEffect(() => {
     if (!isLoading) {
       const t = setTimeout(() => setRevealed(true), 2000);
       return () => clearTimeout(t);
     }
   }, [isLoading]);
+
+  // Resume video playback when browser tab becomes active again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !isLoading) {
+        const activeVid = videoRefs.current[currentSlideRef.current];
+        if (activeVid && isVideoUrl(heroSlidesRef.current[currentSlideRef.current])) {
+          activeVid.play().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isLoading]);
+
+  // Video playback management & continuous loop advancement
+  useEffect(() => {
+    if (isLoading || heroSlides.length === 0) return;
+
+    const currentUrl = heroSlides[currentSlide];
+    const isVid = isVideoUrl(currentUrl);
+
+    // 1. Play active video from 0s
+    const activeVideo = videoRefs.current[currentSlide];
+    if (activeVideo && isVid) {
+      try {
+        activeVideo.muted = true;
+        activeVideo.playsInline = true;
+        activeVideo.currentTime = 0;
+        const playPromise = activeVideo.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {});
+        }
+      } catch (e) {}
+
+      // Preload next slide in sequence so loop transition (including N -> 1) is instant
+      const nextIdx = (currentSlide + 1) % heroSlides.length;
+      const nextVid = videoRefs.current[nextIdx];
+      if (nextVid && nextIdx !== currentSlide) {
+        try {
+          nextVid.preload = "auto";
+          nextVid.currentTime = 0;
+        } catch (e) {}
+      }
+    }
+
+    // 2. Pause non-active background videos after 900ms crossfade
+    const fadeTimer = setTimeout(() => {
+      videoRefs.current.forEach((vid, i) => {
+        if (i !== currentSlideRef.current && vid) {
+          try {
+            vid.pause();
+            vid.currentTime = 0;
+          } catch (e) {}
+        }
+      });
+    }, 900);
+
+    // 3. Safety timers:
+    // Photos: advances after 6 seconds.
+    // Videos: onEnded naturally triggers advancement; safety timeout acts as watchdog (45s max).
+    let slideTimer: NodeJS.Timeout | null = null;
+    if (!isVid) {
+      slideTimer = setTimeout(() => {
+        advanceSlide();
+      }, 6000);
+    } else {
+      const maxWait = (activeVideo && activeVideo.duration && !isNaN(activeVideo.duration))
+        ? (activeVideo.duration + 4) * 1000
+        : 45000;
+      slideTimer = setTimeout(() => {
+        if (currentSlideRef.current === currentSlide) {
+          advanceSlide();
+        }
+      }, Math.max(maxWait, 12000));
+    }
+
+    return () => {
+      clearTimeout(fadeTimer);
+      if (slideTimer) clearTimeout(slideTimer);
+    };
+  }, [currentSlide, isLoading, heroSlides, advanceSlide]);
+
+  function goToSlide(idx: number) {
+    if (idx === currentSlide) return;
+    setPrevSlide(currentSlide);
+    setCurrentSlide(idx);
+  }
 
   return (
     <main className="w-full min-h-screen relative bg-white">
@@ -49,32 +206,70 @@ export default function Home() {
       ) : (
         <div className="pt-[80px]">
 
+          {/* Fixed AI feature floating badge — visible throughout entire homepage */}
+          <AIFloatingBadge />
+
           <SideBars />
 
           {/* ═══════════════════════════════════════════════════
               CINEMATIC HERO SECTION
-              Phase 1 (0-2s): Dark luxury interior
-              Phase 2 (2s+): Interior curtain drops, building
-                             behind is revealed — THE URBANO
-                             looks like a rooftop banner
+              Phase 1 (0-2s): Dark luxury interior (slide 1)
+              Phase 2 (2s+): Curtain drops, building revealed
+              Phase 3 (4.5s+): Auto-slideshow begins
           ═══════════════════════════════════════════════════ */}
-          <div className="relative w-full min-h-[100vh] flex flex-col justify-end px-6 md:px-24 pb-20 md:pb-32 overflow-hidden bg-[#0d1a10] -mt-[80px]">
+          <div className="relative w-full min-h-[100vh] flex flex-col justify-center md:justify-end px-6 md:px-24 pb-0 md:pb-32 pt-24 md:pt-0 overflow-hidden bg-black -mt-[80px]">
 
-            {/* ── LAYER 0 (base): Single building exterior — one iconic building, banner feel ── */}
-            <div className="absolute inset-0 z-0 bg-[#0d1a10]">
-              {/* Single tall building — viewed from below looking up at the facade/rooftop */}
-              <img
-                src={heroBgImage}
-                alt="The Urbano"
-                className="w-full h-full object-cover"
-                style={{
-                  filter: "brightness(0.55) saturate(0.55) contrast(1.1)",
-                  objectPosition: "center 35%",
-                }}
-              />
-              {/* Deep green atmospheric gradients — NO black, brand palette only */}
-              <div className="absolute inset-0 bg-gradient-to-b from-[#0d1a10]/20 via-transparent to-[#0d1a10]/90" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0d1a10]/90 via-[#122416]/30 to-transparent" />
+            {/* ── LAYER 0 (base): Slideshow background images / videos ── */}
+            <div className="absolute inset-0 z-0 bg-black">
+              {/* All slides stacked; only current one is visible */}
+              {heroSlides.map((src, idx) => {
+                const isVid = isVideoUrl(src);
+                const isActive = idx === currentSlide;
+                return isVid ? (
+                  <video
+                    key={src + "_" + idx}
+                    ref={(el) => {
+                      videoRefs.current[idx] = el;
+                    }}
+                    src={src}
+                    muted
+                    playsInline
+                    loop={heroSlides.length === 1}
+                    preload={idx === 0 || isActive || idx === (currentSlide + 1) % heroSlides.length ? "auto" : "metadata"}
+                    onEnded={() => handleEnded(idx)}
+                    onError={() => {
+                      if (idx === currentSlideRef.current) {
+                        advanceSlide();
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+                    style={{
+                      opacity: isActive ? 1 : 0,
+                      filter: "brightness(0.85) contrast(1.05)",
+                      objectPosition: "center 35%",
+                      zIndex: isActive ? 2 : 1,
+                      pointerEvents: isActive ? "auto" : "none",
+                    }}
+                  />
+                ) : (
+                  <img
+                    key={src + "_" + idx}
+                    src={src}
+                    alt={`Hero slide ${idx + 1}`}
+                    className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+                    style={{
+                      opacity: isActive ? 1 : 0,
+                      filter: "brightness(0.85) contrast(1.05)",
+                      objectPosition: "center 35%",
+                      zIndex: isActive ? 2 : 1,
+                      pointerEvents: isActive ? "auto" : "none",
+                    }}
+                  />
+                );
+              })}
+              {/* Clean neutral gradients — NO green tint, provides crisp text readability & true video colors */}
+              <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/80 pointer-events-none" />
+              <div className="absolute inset-0 z-10 bg-gradient-to-r from-black/65 via-black/20 to-transparent pointer-events-none" />
             </div>
 
             {/* ── LAYER 1: Interior overlay panel that slides DOWN to reveal building ── */}
@@ -83,14 +278,32 @@ export default function Home() {
               initial={{ y: 0 }}
               animate={revealed ? { y: "100%" } : { y: 0 }}
               transition={{ duration: 2.0, ease: [0.76, 0, 0.24, 1] }}
+              onAnimationComplete={() => {
+                if (revealed) setCurtainDone(true);
+              }}
+              style={{ display: curtainDone ? "none" : "block" }}
             >
-              <img
-                src={heroOverlayImage}
-                alt="Luxury Interior"
-                className="w-full h-full object-cover opacity-60 mix-blend-luminosity"
-                style={{ filter: "brightness(0.4) saturate(0.5)" }}
-              />
-              {/* Deep green overlays — brand palette, no black */}
+              {!curtainDone && (
+                isVideoUrl(heroSlides[0] ?? FALLBACK_SLIDES[0]) ? (
+                  <video
+                    src={heroSlides[0] ?? FALLBACK_SLIDES[0]}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover opacity-60 mix-blend-luminosity"
+                    style={{ filter: "brightness(0.4) saturate(0.5)", objectPosition: "center 35%" }}
+                  />
+                ) : (
+                  <img
+                    src={heroSlides[0] ?? FALLBACK_SLIDES[0]}
+                    alt="Luxury Interior"
+                    className="w-full h-full object-cover opacity-60 mix-blend-luminosity"
+                    style={{ filter: "brightness(0.4) saturate(0.5)" }}
+                  />
+                )
+              )}
+              {/* Deep green overlays */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#122416] via-[#1a3020]/70 to-[#122416]/40" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#122416] via-[#1a3020]/50 to-transparent" />
             </motion.div>
@@ -163,17 +376,19 @@ export default function Home() {
                 a skyscraper — text never moves, world
                 behind it transforms
             ══════════════════════════════════════════════ */}
-            <div className="relative z-10 max-w-7xl">
+            <div className="relative z-10 max-w-7xl pb-20 md:pb-0">
 
               {/* Eyebrow / atelier label */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1, duration: 0.8 }}
-                className="flex items-center gap-4 text-[9px] tracking-[0.55em] uppercase text-[#E5BA8F] mb-6 font-[family-name:var(--font-cinzel)]"
+                className="flex items-center gap-3.5 mb-5 md:mb-6"
               >
-                <div className="w-9 h-[1px] bg-gradient-to-r from-[#88A492] to-[#E5BA8F]" />
-                Kolkata&apos;s Premier Design Atelier
+                <div className="w-8 md:w-12 h-[2px] bg-gradient-to-r from-[#88A492] to-[#E5BA8F] rounded-full" />
+                <span className="font-[family-name:var(--font-cinzel)] text-xs md:text-sm font-semibold tracking-[0.3em] md:tracking-[0.42em] uppercase text-[#E5BA8F] drop-shadow-[0_2px_12px_rgba(229,186,143,0.3)]">
+                  Kolkata&apos;s Premier Design Atelier
+                </span>
               </motion.div>
 
               {/* THE URBANO — rooftop signage typography */}
@@ -181,17 +396,17 @@ export default function Home() {
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.2, duration: 1 }}
-                className="font-[family-name:var(--font-cormorant)] text-[clamp(58px,10.5vw,155px)] leading-[0.85] uppercase tracking-[-0.01em] font-light"
+                className="font-[family-name:var(--font-cormorant)] text-[clamp(44px,11vw,155px)] leading-[0.85] uppercase tracking-[-0.01em] font-light"
               >
-                {/* "THE" — lighter secondary word, like the bracket on a sign */}
+                {/* "THE" — lighter secondary word */}
                 <span className="block text-[#F2EBE0]">THE</span>
 
-                {/* "URBANO" — hollow stroke, like cut-metal letters on a building facade.
-                    After the building reveal, glows golden like an illuminated sign */}
+                {/* "URBANO" — solid gold fill with subtle outline depth.
+                    After reveal, glows golden like an illuminated rooftop sign */}
                 <motion.div
                   className="block mt-2 md:mt-4"
                   animate={revealed ? {
-                    filter: "drop-shadow(0 0 28px rgba(196,149,106,0.50))",
+                    filter: "drop-shadow(0 0 28px rgba(196,149,106,0.55))",
                   } : {
                     filter: "drop-shadow(0 0 0px rgba(196,149,106,0))",
                   }}
@@ -199,8 +414,8 @@ export default function Home() {
                 >
                   <span
                     style={{
-                      WebkitTextStroke: "1.8px #E5BA8F",
-                      color: "transparent",
+                      WebkitTextStroke: "1px rgba(229,186,143,0.4)",
+                      color: "#E5BA8F",
                       display: "block",
                     }}
                   >
@@ -225,22 +440,57 @@ export default function Home() {
                 className="flex flex-wrap items-center gap-6 md:gap-10"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="font-[family-name:var(--font-cormorant)] text-2xl md:text-3xl text-[#F2EBE0] font-normal">230</span>
-                  <span className="text-[8px] tracking-[0.45em] uppercase text-[#F2EBE0]/70 font-[family-name:var(--font-josefin)]">Projects</span>
+                  <span className="font-[family-name:var(--font-josefin)] text-2xl md:text-3xl lg:text-4xl text-white font-medium tracking-tight">
+                    230<span className="text-[#E5BA8F] text-xl md:text-2xl font-light ml-0.5">+</span>
+                  </span>
+                  <span className="text-[9px] tracking-[0.35em] uppercase text-[#F2EBE0]/75 font-[family-name:var(--font-josefin)] font-medium">
+                    Projects
+                  </span>
                 </div>
-                <div className="w-[1px] h-8 bg-[#C4956A]/60 hidden md:block" />
+                <div className="w-[1px] h-9 bg-gradient-to-b from-transparent via-[#C4956A]/60 to-transparent hidden md:block" />
                 <div className="flex flex-col gap-1">
-                  <span className="font-[family-name:var(--font-cormorant)] text-2xl md:text-3xl text-[#F2EBE0] font-normal">4.9★</span>
-                  <span className="text-[8px] tracking-[0.45em] uppercase text-[#F2EBE0]/70 font-[family-name:var(--font-josefin)]">Google Rating</span>
+                  <span className="font-[family-name:var(--font-josefin)] text-2xl md:text-3xl lg:text-4xl text-white font-medium tracking-tight">
+                    4.9<span className="text-[#E5BA8F] ml-1">★</span>
+                  </span>
+                  <span className="text-[9px] tracking-[0.35em] uppercase text-[#F2EBE0]/75 font-[family-name:var(--font-josefin)] font-medium">
+                    Google Rating
+                  </span>
                 </div>
-                <div className="w-[1px] h-8 bg-[#C4956A]/60 hidden md:block" />
+                <div className="w-[1px] h-9 bg-gradient-to-b from-transparent via-[#C4956A]/60 to-transparent hidden md:block" />
                 <div className="flex flex-col gap-1">
-                  <span className="font-[family-name:var(--font-cormorant)] text-2xl md:text-3xl text-[#F2EBE0] font-normal">50K</span>
-                  <span className="text-[8px] tracking-[0.45em] uppercase text-[#F2EBE0]/70 font-[family-name:var(--font-josefin)]">Sq Ft Designed</span>
+                  <span className="font-[family-name:var(--font-josefin)] text-2xl md:text-3xl lg:text-4xl text-white font-medium tracking-tight">
+                    50K<span className="text-[#E5BA8F] text-xl md:text-2xl font-light ml-0.5">+</span>
+                  </span>
+                  <span className="text-[9px] tracking-[0.35em] uppercase text-[#F2EBE0]/75 font-[family-name:var(--font-josefin)] font-medium">
+                    Sq Ft Designed
+                  </span>
                 </div>
               </motion.div>
 
             </div>
+
+            {/* ── Slide indicator dots (bottom-right, above scroll indicator) ── */}
+            {heroSlides.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 5, duration: 1 }}
+                className="absolute bottom-16 right-8 z-10 flex flex-col gap-2 items-center"
+              >
+                {heroSlides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => goToSlide(idx)}
+                    aria-label={`Go to slide ${idx + 1}`}
+                    className="relative w-[3px] rounded-full transition-all duration-500 cursor-pointer"
+                    style={{
+                      height: idx === currentSlide ? "20px" : "8px",
+                      backgroundColor: idx === currentSlide ? "#E5BA8F" : "rgba(229,186,143,0.35)",
+                    }}
+                  />
+                ))}
+              </motion.div>
+            )}
 
             {/* Scroll indicator */}
             <motion.div
@@ -263,11 +513,12 @@ export default function Home() {
 
           {/* ── Rest of page sections ── */}
           <LuxuryCategories />
+          <Gallery />
           <MaterialPalette />
           <WhyChooseUs />
           <DesignProcess />
           <AIVisualizer />
-          <Gallery />
+       
           <Testimonials />
           <ContactFooter />
 

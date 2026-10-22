@@ -27,6 +27,91 @@ export interface UploadResult {
   didCompress: boolean;
 }
 
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+  return (
+    /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) ||
+    url.includes("/video/upload/")
+  );
+}
+
+export type VideoCropGravity = "auto" | "north" | "center" | "south" | "none";
+
+/**
+ * Transforms a Cloudinary video URL to apply 16:9 crop or change gravity
+ */
+export function applyCloudinaryVideoTransform(
+  url: string,
+  gravity: VideoCropGravity = "auto"
+): string {
+  if (!url || !url.includes("res.cloudinary.com") || !url.includes("/video/upload/")) {
+    return url;
+  }
+
+  const regex = /\/video\/upload\/(?:[a-zA-Z0-9_,:\-]+\/)*(v[0-9]+\/.*)$/;
+  const match = url.match(regex);
+  if (!match) return url;
+
+  const versionAndPublicId = match[1];
+  const baseUrl = url.substring(0, url.indexOf("/video/upload/") + "/video/upload/".length);
+
+  if (gravity === "none") {
+    return `${baseUrl}q_auto,f_auto/${versionAndPublicId}`;
+  }
+
+  return `${baseUrl}c_fill,ar_16:9/g_${gravity}/q_auto/${versionAndPublicId}`;
+}
+
+/**
+ * Uploads a video file to Cloudinary with automatic optimization and optional 16:9 crop
+ */
+export async function uploadVideoToCloudinary(
+  file: File,
+  gravity: VideoCropGravity = "auto"
+): Promise<UploadResult> {
+  const originalSizeKB = Math.round(file.size / 1024);
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_PRESET);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.error?.message || "Cloudinary video upload failed.");
+  }
+
+  const rawUrl = result.secure_url as string;
+  const transformedUrl = applyCloudinaryVideoTransform(rawUrl, gravity);
+
+  return {
+    url: transformedUrl,
+    originalSizeKB,
+    compressedSizeKB: Math.round((result.bytes || file.size) / 1024),
+    didCompress: true,
+  };
+}
+
+/**
+ * Uploads any media (image or video) with automatic format/crop handling
+ */
+export async function uploadMediaToCloudinary(
+  file: File,
+  videoGravity: VideoCropGravity = "auto"
+): Promise<UploadResult> {
+  if (file.type.startsWith("video/")) {
+    return uploadVideoToCloudinary(file, videoGravity);
+  }
+  return compressAndUploadDetailed(file);
+}
+
 /**
  * Compresses an image file in the browser if it exceeds max size,
  * uploads it to Cloudinary, and returns detailed compression statistics.

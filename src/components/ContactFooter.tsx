@@ -6,7 +6,7 @@ import { getSettings } from "@/lib/settingsData";
 export default function ContactFooter() {
   const [address, setAddress] = useState("The Urbano, 4th Floor, Premium Block, Sector V, Salt Lake, Kolkata, WB 700091");
   const [phone, setPhone] = useState("+91 9583529847 / +91 9123787492");
-  const [email, setEmail] = useState("theurbano.interior@gmail.com");
+  const [email, setEmail] = useState("contact@theurbano.in");
 
   useEffect(() => {
     getSettings(
@@ -14,7 +14,7 @@ export default function ContactFooter() {
       {
         footer_address: "The Urbano, 4th Floor, Premium Block, Sector V, Salt Lake, Kolkata, WB 700091",
         footer_phone: "+91 9583529847 / +91 9123787492",
-        footer_email: "theurbano.interior@gmail.com"
+        footer_email: "contact@theurbano.in"
       }
     ).then((vals) => {
       setAddress(vals.footer_address);
@@ -142,26 +142,28 @@ export default function ContactFooter() {
       </div>
 
       {/* Footer Strip */}
-      <div className="border-t border-white/5 bg-[#080709] py-12 md:py-16 relative z-10">
+      <div className="border-t border-gray-200 bg-white py-12 md:py-16 relative z-10 shadow-[0_-4px_30px_rgba(0,0,0,0.03)]">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center md:text-left">
           <div>
-            <h3 className="font-[family-name:var(--font-cormorant)] text-3xl text-white mb-2 tracking-wide font-light">The <span className="font-bold text-[#C4956A]">Urbano</span></h3>
-            <p className="font-[family-name:var(--font-josefin)] text-sm text-gray-500 italic">"We don't decorate spaces. We compose lives."</p>
+            <h3 className="font-[family-name:var(--font-cormorant)] text-3xl text-[#111111] mb-2 tracking-wide font-medium">
+              The <span className="font-bold text-[#C4956A]">Urbano</span>
+            </h3>
+            <p className="font-[family-name:var(--font-josefin)] text-sm text-gray-600 italic">&quot;We don&apos;t decorate spaces. We compose lives.&quot;</p>
           </div>
-          <div className="font-[family-name:var(--font-josefin)] text-xs text-gray-400 leading-relaxed md:pl-10">
-            Kolkata, West Bengal, India<br/>
-            +91 9583529847 / +91 9123787492<br/>
-            theurbano.interior@gmail.com
+          <div className="font-[family-name:var(--font-josefin)] text-xs text-gray-700 leading-relaxed md:pl-10">
+            {address}<br/>
+            {phone}<br/>
+            {email}
           </div>
           <div className="flex justify-center md:justify-end gap-6 items-center">
-            <a href="#" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-400 hover:text-[#C4956A] transition-colors uppercase font-bold">Instagram</a>
-            <a href="#" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-400 hover:text-[#C4956A] transition-colors uppercase font-bold">Houzz</a>
-            <a href="#" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-400 hover:text-[#C4956A] transition-colors uppercase font-bold">WhatsApp</a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-800 hover:text-[#C4956A] transition-colors uppercase font-bold">Instagram</a>
+            <a href="https://houzz.com" target="_blank" rel="noopener noreferrer" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-800 hover:text-[#C4956A] transition-colors uppercase font-bold">Houzz</a>
+            <a href="https://wa.me/919583529847" target="_blank" rel="noopener noreferrer" className="font-[family-name:var(--font-cinzel)] text-[9px] tracking-widest text-gray-800 hover:text-[#C4956A] transition-colors uppercase font-bold">WhatsApp</a>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-white/5 text-center flex flex-col md:flex-row justify-between items-center gap-4">
-          <span className="font-[family-name:var(--font-josefin)] text-[10px] text-gray-600 tracking-wider">© 2026 The Urbano — All rights reserved.</span>
-          <span className="font-[family-name:var(--font-josefin)] text-[10px] text-gray-600 tracking-wider">Designed with passion in Kolkata</span>
+        <div className="max-w-7xl mx-auto px-6 mt-12 pt-8 border-t border-gray-200 text-center flex flex-col md:flex-row justify-between items-center gap-4">
+          <span className="font-[family-name:var(--font-josefin)] text-[10px] text-gray-500 tracking-wider">© 2026 The Urbano — All rights reserved.</span>
+          <span className="font-[family-name:var(--font-josefin)] text-[10px] text-gray-500 tracking-wider">Designed with passion in Kolkata</span>
         </div>
       </div>
     </section>

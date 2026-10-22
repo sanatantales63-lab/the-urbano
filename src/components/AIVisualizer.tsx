@@ -76,12 +76,27 @@ export default function AIVisualizer() {
                 </div>
               </div>
 
-              <button 
+              <motion.button 
                 onClick={handleRedirect}
-                className="w-full py-4 rounded-full bg-[#1a1a1a] text-white hover:bg-[#2a2a2a] shadow-lg font-[family-name:var(--font-cinzel)] font-bold text-xs tracking-[0.2em] uppercase transition-all flex items-center justify-center gap-3 cursor-pointer"
+                animate={{
+                  backgroundColor: ["#C4956A", "#2a2a2a", "#C4956A"],
+                  boxShadow: [
+                    "0 10px 25px -5px rgba(196, 149, 106, 0.45)",
+                    "0 10px 25px -5px rgba(42, 42, 42, 0.45)",
+                    "0 10px 25px -5px rgba(196, 149, 106, 0.45)",
+                  ],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-4 rounded-full text-white font-[family-name:var(--font-cinzel)] font-bold text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-3 cursor-pointer"
               >
-                Sign Up & Generate Design
-              </button>
+                Generate Your Design 
+              </motion.button>
             </div>
 
             {/* Right Display Teaser */}

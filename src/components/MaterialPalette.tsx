@@ -63,7 +63,7 @@ export default function MaterialPalette() {
             Material Language
           </span>
           <h2 className="font-[family-name:var(--font-cormorant)] text-4xl md:text-7xl mt-2 md:mt-3 font-light tracking-tight">
-            The <span className="font-bold">Palette</span> We Speak
+            The Palette We Speak
           </h2>
         </div>
 

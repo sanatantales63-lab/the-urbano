@@ -21,7 +21,7 @@ export default function AdminFooterPage() {
           {
             footer_address: "The Urbano, 4th Floor, Premium Block, Sector V, Salt Lake, Kolkata, WB 700091",
             footer_phone: "+91 9583529847 / +91 9123787492",
-            footer_email: "theurbano.interior@gmail.com",
+            footer_email: "contact@theurbano.in",
           }
         );
         setAddress(vals.footer_address);
@@ -123,7 +123,7 @@ export default function AdminFooterPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. theurbano.interior@gmail.com"
+                placeholder="e.g. contact@theurbano.in"
                 required
                 className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[#C4956A] outline-none text-white"
               />

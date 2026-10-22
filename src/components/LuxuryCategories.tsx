@@ -93,7 +93,7 @@ export default function LuxuryCategories() {
             Our Expertise
           </span>
           <h2 className="font-[family-name:var(--font-cormorant)] text-4xl text-[#1a1a1a] mt-2 font-light">
-            Design <span className="font-bold">Categories</span>
+            Design <span className="font-bold text-[#C4956A]">Categories</span>
           </h2>
         </div>
         <div
@@ -146,7 +146,7 @@ export default function LuxuryCategories() {
               Our Expertise
             </span>
             <h2 className="font-[family-name:var(--font-cormorant)] text-5xl md:text-6xl text-[#1a1a1a] mt-2 font-light">
-              Design <span className="font-bold">Categories</span>
+              Design <span className="font-bold text-[#C4956A]">Categories</span>
             </h2>
           </div>
           <div className="flex items-center gap-4 text-[#888888]">
