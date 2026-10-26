@@ -141,23 +141,38 @@ export async function POST(request: NextRequest) {
         budget === "Mid Range"      ? "premium wood finishes, designer lighting, custom cabinetry, quality fabrics" :
         /* Luxury */                  "ultra-luxury, Italian marble, gold brass accents, bespoke furniture, architectural digest quality";
 
-      const prompt = `professional interior design photograph, ${style} style ${roomType}, ${budgetDesc}, photorealistic, 8k resolution, beautiful lighting, highly detailed`;
-      const negativePrompt = "low quality, ugly, blurry, deformed, bad anatomy, people, persons, cartoon, drawing, painting, unrealistic, watermark";
+      // Style-specific prompt boosters for more accurate style rendering
+      const styleBoost: Record<string, string> = {
+        "Modern":          "sleek lines, neutral palette, open space, contemporary fixtures",
+        "Minimalist":      "bare essentials, white walls, hidden storage, negative space",
+        "Scandinavian":    "light oak wood, cozy textiles, hygge, soft whites and greys",
+        "Industrial":      "exposed brick, raw concrete, metal pipes, Edison bulbs",
+        "Luxury":          "chandeliers, velvet upholstery, gold accents, ornate details",
+        "Japandi":         "wabi-sabi, natural textures, muted earth tones, zen simplicity",
+        "Art Deco":        "geometric patterns, rich colors, lacquered surfaces, glamour",
+        "Modern Farmhouse":"shiplap walls, barn doors, rustic wood beams, warm whites",
+        "Bohemian":        "layered textiles, eclectic decor, plants, warm jewel tones",
+      };
+      const styleDetail = styleBoost[style] || "";
 
-      const controlnetScale = 0.8;
+      const prompt = `professional interior design photograph, ${style} style ${roomType}, ${styleDetail}, ${budgetDesc}, photorealistic, 8k resolution, beautiful ambient lighting, highly detailed, award-winning interior design, architectural digest quality`;
+      const negativePrompt = "low quality, ugly, blurry, deformed, bad anatomy, people, persons, cartoon, drawing, painting, unrealistic, watermark, extra rooms, missing walls, distorted walls, warped geometry, extra windows, extra doors";
 
-      console.log(`[Visualizer] Calling Segmind — style:${style} room:${roomType}`);
+      console.log(`[Visualizer] Calling Segmind Flux ControlNet — style:${style} room:${roomType}`);
       console.log(`[Visualizer] API Key prefix: ${segmindApiKey.substring(0, 10)}...`);
 
-      // ── 6. Segmind API call ─────────────────────────────────────────────────
-      // We give Segmind 100s (well under our 110s maxDuration limit)
+      // ── 6. Segmind Flux ControlNet API call ────────────────────────────────
+      // Model: flux-controlnet — Segmind's latest & best model (2024/2025)
+      // Uses FLUX.1 base with ControlNet Depth for perfect room structure preservation
+      // cn_type: "depth" ensures walls, windows, furniture layout stay exactly the same
+      // cn_strength: 0.72 — strong enough to preserve structure, loose enough for style
       let segmindResponse: Response;
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 100000);
 
-        console.log("[Visualizer] Sending request to Segmind...");
-        segmindResponse = await fetch("https://api.segmind.com/v1/sdxl-controlnet", {
+        console.log("[Visualizer] Sending request to Segmind Flux ControlNet...");
+        segmindResponse = await fetch("https://api.segmind.com/v1/flux-controlnet", {
           method: "POST",
           signal: controller.signal,
           headers: {
@@ -167,14 +182,19 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             image: rawBase64,
             prompt,
-            negative_prompt: negativePrompt,
-            samples: 1,
-            scheduler: "UniPC",
-            cn_model: "sdxl_depth",
-            num_inference_steps: 25,
-            guidance_scale: 7.5,
-            controlnet_scale: controlnetScale,
+            seed: Math.floor(Math.random() * 9999999),
+            sampler: "euler",
+            scheduler: "simple",
+            steps: 25,
+            cn_type: "depth",         // Depth map = preserves 3D room structure perfectly
+            cn_strength: 0.72,        // 0.7-0.75 = best balance of structure + style freedom
+            cn_stop: 1.0,
+            guidance: 3.5,            // Flux works best with lower CFG (3-4)
             base64: true,
+            use_input_img_dimension: true,  // Keeps original image dimensions
+            samples: 1,
+            image_format: "jpeg",
+            quality: 95,
           }),
         });
 
@@ -206,10 +226,12 @@ export async function POST(request: NextRequest) {
       }
 
       // ── 7. Parse response ─────────────────────────────────────────────────
+      // Flux ControlNet returns raw image bytes (image/jpeg) OR base64 JSON
       const contentType = segmindResponse.headers.get("content-type") || "";
       console.log(`[Visualizer] Response content-type: ${contentType}`);
 
       if (contentType.includes("image/")) {
+        // Raw image bytes returned
         const buf = await segmindResponse.arrayBuffer();
         const b64 = Buffer.from(buf).toString("base64");
         const mime = contentType.split(";")[0].trim();
@@ -220,14 +242,16 @@ export async function POST(request: NextRequest) {
         const result = await segmindResponse.json();
         console.log("[Visualizer] JSON response keys:", Object.keys(result));
 
+        // Flux ControlNet with base64:true returns { image: "base64string" }
         if (result.image) {
           generatedUrl = result.image.startsWith("data:")
             ? result.image
-            : `data:image/png;base64,${result.image}`;
+            : `data:image/jpeg;base64,${result.image}`;
         } else if (Array.isArray(result.images) && result.images.length > 0) {
           const img = result.images[0];
-          generatedUrl = img.startsWith("data:") ? img : `data:image/png;base64,${img}`;
+          generatedUrl = img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`;
         } else if (result.output) {
+          // Some Segmind models return { output: "url_or_base64" }
           generatedUrl = result.output;
         } else {
           console.error("[Visualizer] Unexpected response:", JSON.stringify(result).slice(0, 300));
